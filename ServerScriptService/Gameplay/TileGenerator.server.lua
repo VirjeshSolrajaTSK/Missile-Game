@@ -1,21 +1,73 @@
--- TileGenerator.server.lua
-
 local Players = game:GetService("Players")
 
 local TILE_LENGTH = 120
 local TILES_AHEAD = 12
-local ROAD_WIDTH = 60
+local ROAD_WIDTH = 80
 
 local lastTileZ = 0
 
-local tilesFolder = workspace:FindFirstChild("RoadTiles") or Instance.new("Folder")
-tilesFolder.Name = "RoadTiles"
-tilesFolder.Parent = workspace
+local tilesFolder = workspace:WaitForChild("RoadTiles")
 
+------------------------------------------------
+-- TREE
+------------------------------------------------
 
---------------------------------------------------
--- CREATE TILE
---------------------------------------------------
+local function createTree(x,z,parent)
+
+	local trunk = Instance.new("Part")
+	trunk.Size = Vector3.new(2,8,2)
+	trunk.Anchored = true
+	trunk.Color = Color3.fromRGB(101,67,33)
+	trunk.Position = Vector3.new(x,4,z)
+	trunk.Parent = parent
+
+	local leaves = Instance.new("Part")
+	leaves.Shape = Enum.PartType.Ball
+	leaves.Size = Vector3.new(8,8,8)
+	leaves.Anchored = true
+	leaves.Color = Color3.fromRGB(40,140,60)
+	leaves.Position = Vector3.new(x,10,z)
+	leaves.Parent = parent
+
+end
+
+------------------------------------------------
+-- STREET LIGHT
+------------------------------------------------
+
+local function createStreetLight(x,z,parent)
+
+	local pole = Instance.new("Part")
+	pole.Size = Vector3.new(1,16,1)
+	pole.Anchored = true
+	pole.Color = Color3.fromRGB(70,70,70)
+	pole.Position = Vector3.new(x,8,z)
+	pole.Parent = parent
+
+	local lamp = Instance.new("Part")
+	lamp.Size = Vector3.new(2,1,2)
+	lamp.Anchored = true
+	lamp.Material = Enum.Material.Neon
+	lamp.Color = Color3.fromRGB(255,230,180)
+	lamp.Position = Vector3.new(x,16,z)
+	lamp.Parent = parent
+
+	local light = Instance.new("SpotLight")
+	light.Face = Enum.NormalId.Bottom
+
+	light.Angle = 130
+	light.Range = 90
+	light.Brightness = 12
+
+	light.Color = Color3.fromRGB(255,230,180)
+
+	light.Parent = lamp
+
+end
+
+------------------------------------------------
+-- CREATE HIGHWAY TILE
+------------------------------------------------
 
 local function createTile(zPos)
 
@@ -23,35 +75,60 @@ local function createTile(zPos)
 	tile.Name = "Tile"
 	tile.Parent = tilesFolder
 
-	-- road
+	--------------------------------
+	-- ROAD
+	--------------------------------
+
 	local road = Instance.new("Part")
+
 	road.Size = Vector3.new(ROAD_WIDTH,1,TILE_LENGTH)
 	road.Anchored = true
-	road.Material = Enum.Material.Concrete
-	road.Color = Color3.fromRGB(30,30,30)
+	road.Material = Enum.Material.Asphalt
+	road.Color = Color3.fromRGB(35,35,35)
+
 	road.Position = Vector3.new(0,0,zPos)
+
 	road.Parent = tile
 
-	-- ground left
-	local groundLeft = Instance.new("Part")
-	groundLeft.Size = Vector3.new(250,1,TILE_LENGTH)
-	groundLeft.Anchored = true
-	groundLeft.Material = Enum.Material.Grass
-	groundLeft.Color = Color3.fromRGB(40,110,40)
-	groundLeft.Position = Vector3.new(-(ROAD_WIDTH/2+125),-0.5,zPos)
-	groundLeft.Parent = tile
+	--------------------------------
+	-- LANE MARKINGS
+	--------------------------------
 
-	-- ground right
-	local groundRight = groundLeft:Clone()
-	groundRight.Position = Vector3.new((ROAD_WIDTH/2+125),-0.5,zPos)
-	groundRight.Parent = tile
+	for i = -1,1 do
+
+		local line = Instance.new("Part")
+
+		line.Size = Vector3.new(1,0.05,TILE_LENGTH)
+		line.Anchored = true
+
+		line.Material = Enum.Material.SmoothPlastic
+		line.Color = Color3.fromRGB(220,220,220)
+
+		line.Position = Vector3.new(i*20,0.55,zPos)
+
+		line.Parent = tile
+
+	end
+
+	--------------------------------
+	-- TREES
+	--------------------------------
+
+	createTree(-55,zPos,tile)
+	createTree(55,zPos,tile)
+
+	--------------------------------
+	-- STREET LIGHTS (NEAR ROAD)
+	--------------------------------
+
+	createStreetLight(-32,zPos,tile)
+	createStreetLight(32,zPos,tile)
 
 end
 
-
---------------------------------------------------
+------------------------------------------------
 -- INITIAL TILES
---------------------------------------------------
+------------------------------------------------
 
 for i = 1,20 do
 
@@ -61,10 +138,9 @@ for i = 1,20 do
 
 end
 
-
---------------------------------------------------
--- TILE GENERATION LOOP
---------------------------------------------------
+------------------------------------------------
+-- TILE LOOP
+------------------------------------------------
 
 while true do
 
@@ -79,7 +155,6 @@ while true do
 	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then continue end
 
-
 	while lastTileZ < root.Position.Z + (TILE_LENGTH * TILES_AHEAD) do
 
 		createTile(lastTileZ)
@@ -88,8 +163,6 @@ while true do
 
 	end
 
-
-	-- cleanup tiles behind player
 	for _,tile in pairs(tilesFolder:GetChildren()) do
 
 		local road = tile:FindFirstChildWhichIsA("Part")

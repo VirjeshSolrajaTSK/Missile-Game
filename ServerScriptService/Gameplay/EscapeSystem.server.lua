@@ -1,74 +1,50 @@
--- EscapeSystem.server.lua
-
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local ESCAPE_DISTANCE = 900
+local GameConfig = require(ReplicatedStorage.Modules.GameConfig)
 
-local safeZone = Instance.new("Part")
-safeZone.Name = "EscapeZone"
-safeZone.Size = Vector3.new(80,10,40)
-safeZone.Anchored = true
-safeZone.CanCollide = false
-safeZone.Material = Enum.Material.Neon
-safeZone.Color = Color3.fromRGB(0,255,120)
+local ESCAPE_DISTANCE = GameConfig.EscapeDistance
 
-safeZone.Position = Vector3.new(0,5,ESCAPE_DISTANCE)
+------------------------------------------------
+-- CAMP BASE
+------------------------------------------------
 
-safeZone.Parent = workspace
+local base = Instance.new("Part")
 
+base.Name = "SafeZone"
+base.Size = Vector3.new(120,1,80)
 
--- portal particles
-local particle = Instance.new("ParticleEmitter")
-particle.Texture = "rbxassetid://243660364"
-particle.Rate = 40
-particle.Speed = NumberRange.new(2,5)
-particle.Lifetime = NumberRange.new(1,2)
-particle.Parent = safeZone
+base.Anchored = true
+base.Material = Enum.Material.Concrete
+base.Color = Color3.fromRGB(70,70,70)
 
+base.Position = Vector3.new(0,0.5,ESCAPE_DISTANCE)
 
--- portal sound
-local portalSound = Instance.new("Sound")
-portalSound.SoundId = "rbxassetid://1843520823"
-portalSound.Volume = 1
-portalSound.Looped = true
-portalSound.Parent = safeZone
-portalSound:Play()
+base.Parent = workspace
 
+------------------------------------------------
+-- TENT
+------------------------------------------------
 
-local function spawnHelicopter()
+local tent = Instance.new("WedgePart")
 
-	local heli = Instance.new("Part")
-	heli.Name = "RescueHelicopter"
-	heli.Size = Vector3.new(20,6,20)
-	heli.Anchored = true
-	heli.Color = Color3.fromRGB(0,0,0)
+tent.Size = Vector3.new(40,20,30)
+tent.Anchored = true
+tent.Material = Enum.Material.Fabric
+tent.Color = Color3.fromRGB(60,80,60)
 
-	heli.Position = Vector3.new(0,40,ESCAPE_DISTANCE)
+tent.Position = Vector3.new(0,10,ESCAPE_DISTANCE)
 
-	heli.Parent = workspace
+tent.Parent = workspace
 
-	local heliSound = Instance.new("Sound")
-	heliSound.SoundId = "rbxassetid://9125618043"
-	heliSound.Looped = true
-	heliSound.Volume = 1
-	heliSound.Parent = heli
-	heliSound:Play()
-
-	local tween = TweenService:Create(
-		heli,
-		TweenInfo.new(4),
-		{Position = Vector3.new(0,15,ESCAPE_DISTANCE)}
-	)
-
-	tween:Play()
-
-end
-
+------------------------------------------------
+-- TOUCH DETECTION
+------------------------------------------------
 
 local reachedPlayers = {}
 
-safeZone.Touched:Connect(function(hit)
+base.Touched:Connect(function(hit)
 
 	local character = hit.Parent
 	if not character then return end
@@ -79,9 +55,46 @@ safeZone.Touched:Connect(function(hit)
 	if reachedPlayers[player] then return end
 	reachedPlayers[player] = true
 
-	player:SetAttribute("Escaped",true)
+	player:SetAttribute("Escaped", true)
 
-	print(player.Name.." ESCAPED!")
+	print("MISSION COMPLETE:",player.Name)
+
+	------------------------------------------------
+	-- STOP MISSILES
+	------------------------------------------------
+
+	local missiles = workspace:FindFirstChild("Missiles")
+
+	if missiles then
+		for _,m in pairs(missiles:GetChildren()) do
+			m:Destroy()
+		end
+	end
+
+	------------------------------------------------
+	-- WALK PLAYER INTO CAMP
+	------------------------------------------------
+
+	local root = character:FindFirstChild("HumanoidRootPart")
+
+	if root then
+
+		local goal = {}
+		goal.Position = Vector3.new(0,3,ESCAPE_DISTANCE+20)
+
+		local tween = TweenService:Create(
+			root,
+			TweenInfo.new(3),
+			goal
+		)
+
+		tween:Play()
+
+	end
+
+	------------------------------------------------
+	-- FREEZE PLAYER
+	------------------------------------------------
 
 	local humanoid = character:FindFirstChild("Humanoid")
 
@@ -89,6 +102,37 @@ safeZone.Touched:Connect(function(hit)
 		humanoid.WalkSpeed = 0
 	end
 
-	spawnHelicopter()
+	------------------------------------------------
+	-- SHOW GAME FINISHED
+	------------------------------------------------
+
+	player:SetAttribute("GameFinished",true)
 
 end)
+
+------------------------------------------------
+-- CAMP FLOODLIGHTS
+------------------------------------------------
+
+for i = -2,2 do
+
+	local pole = Instance.new("Part")
+	pole.Size = Vector3.new(1,18,1)
+	pole.Anchored = true
+	pole.Material = Enum.Material.Metal
+	pole.Color = Color3.fromRGB(40,40,40)
+
+	pole.Position = Vector3.new(i*25,9,ESCAPE_DISTANCE+10)
+	pole.Parent = workspace
+
+	local light = Instance.new("SpotLight")
+
+	light.Brightness = 10
+	light.Range = 80
+	light.Angle = 120
+
+	light.Color = Color3.fromRGB(255,255,220)
+
+	light.Parent = pole
+
+end

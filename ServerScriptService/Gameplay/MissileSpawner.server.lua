@@ -1,19 +1,43 @@
--- MissileSpawner.server.lua
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local MISSILE_SPEED = 120
-local SPAWN_DISTANCE = 140
-local SPAWN_INTERVAL = 6
+local GameConfig = require(ReplicatedStorage.Modules.GameConfig)
 
-local missilesFolder = workspace:FindFirstChild("Missiles") or Instance.new("Folder")
-missilesFolder.Name = "Missiles"
-missilesFolder.Parent = workspace
+local MISSILE_SPEED = GameConfig.Missile.Speed
+local SPAWN_DISTANCE = GameConfig.Missile.SpawnDistance
+local SPAWN_INTERVAL = GameConfig.Missile.SpawnInterval
+local LANES = GameConfig.Missile.Lanes
 
--- road lanes
-local LANES = {-20,0,20}
+local missilesFolder = workspace:WaitForChild("Missiles")
+
+--------------------------------------------------
+-- WARNING MARKER
+--------------------------------------------------
+
+local function createWarning(position)
+
+	local marker = Instance.new("Part")
+
+	marker.Anchored = true
+	marker.CanCollide = false
+
+	marker.Size = Vector3.new(8,0.2,8)
+
+	marker.Material = Enum.Material.Neon
+	marker.Color = Color3.fromRGB(255,0,0)
+
+	marker.Position = position
+	marker.Parent = workspace
+
+	task.delay(1,function()
+		if marker then
+			marker:Destroy()
+		end
+	end)
+
+end
 
 --------------------------------------------------
 -- EXPLOSION
@@ -22,55 +46,55 @@ local LANES = {-20,0,20}
 local function createExplosion(pos)
 
 	local explosion = Instance.new("Explosion")
+
 	explosion.Position = pos
-	explosion.BlastRadius = 10
+	explosion.BlastRadius = GameConfig.Missile.ExplosionRadius
 	explosion.BlastPressure = 0
+
 	explosion.Parent = workspace
 
 end
 
 --------------------------------------------------
--- SPAWN MISSILE
+-- MISSILE
 --------------------------------------------------
 
 local function spawnMissile(player)
 
-	local character = player.Character
-	if not character then return end
+	if player:GetAttribute("Escaped") then return end
 
-	local root = character:FindFirstChild("HumanoidRootPart")
+	local char = player.Character
+	if not char then return end
+
+	local root = char:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 
-	-- pick random lane
 	local lane = LANES[math.random(1,#LANES)]
 
-	local missile = Instance.new("Part")
-	missile.Size = Vector3.new(2,2,6)
-	missile.Anchored = true
-	missile.Material = Enum.Material.Neon
-	missile.Color = Color3.fromRGB(255,60,60)
-	missile.Name = "Missile"
-
-	missile.Position = Vector3.new(
+	local spawnPos = Vector3.new(
 		lane,
 		root.Position.Y + 3,
 		root.Position.Z - SPAWN_DISTANCE
 	)
 
+	createWarning(spawnPos)
+
+	task.wait(1)
+
+	local missile = Instance.new("Part")
+
+	missile.Name = "Missile"
+	missile.Size = Vector3.new(2,2,6)
+
+	missile.Anchored = true
+	missile.Material = Enum.Material.Neon
+	missile.Color = Color3.fromRGB(255,60,60)
+
+	missile.Position = spawnPos
 	missile.Parent = missilesFolder
 
-	-- fire effect
-	local fire = Instance.new("Fire")
-	fire.Size = 6
-	fire.Heat = 10
-	fire.Parent = missile
-
-	local smoke = Instance.new("Smoke")
-	smoke.Size = 5
-	smoke.RiseVelocity = 8
-	smoke.Parent = missile
-
 	local connection
+
 	connection = RunService.Heartbeat:Connect(function(dt)
 
 		if not missile.Parent then
@@ -78,18 +102,17 @@ local function spawnMissile(player)
 			return
 		end
 
-		-- missile moves straight forward
-		missile.Position = missile.Position + Vector3.new(0,0,MISSILE_SPEED * dt)
+		missile.Position += Vector3.new(0,0,MISSILE_SPEED * dt)
 
 		local target = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 		if not target then return end
 
-		-- hit detection
 		if (missile.Position - target.Position).Magnitude < 6 then
 
 			createExplosion(missile.Position)
 
 			local humanoid = player.Character:FindFirstChild("Humanoid")
+
 			if humanoid then
 				humanoid.Health = 0
 			end
@@ -103,7 +126,6 @@ local function spawnMissile(player)
 	Debris:AddItem(missile,15)
 
 end
-
 
 --------------------------------------------------
 -- LOOP
