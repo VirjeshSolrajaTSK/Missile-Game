@@ -1,0 +1,28 @@
+{
+  "name": "RunnerGame",
+  "tree": {
+    "$className": "DataModel",
+
+    "Workspace": {
+      "$path": "Workspace"
+    },
+
+    "ServerScriptService": {
+      "$path": "ServerScriptService"
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "$path": "StarterPlayer/StarterPlayerScripts"
+      }
+    },
+
+    "StarterGui": {
+      "$path": "StarterGui"
+    },
+
+    "ReplicatedStorage": {
+      "$path": "ReplicatedStorage"
+    }
+  }
+}
